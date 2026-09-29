@@ -206,7 +206,80 @@ async def chat(req: Request):
         # The turn produced no text or UI (e.g. the agent only ran tools, or a
         # tool stalled). Be honest rather than silent.
         parts = [{"kind": "text", "text": "(The agent didn't return a reply.)"}]
+
+    # Asynchronously record turn in Firestore chat history for this user
+    try:
+        import time
+        import urllib.parse
+        creds, project = google.auth.default()
+        auth_req = google.auth.transport.requests.Request()
+        creds.refresh(auth_req)
+        fs_headers = {
+            "Authorization": f"Bearer {creds.token}",
+            "Content-Type": "application/json"
+        }
+        safe_uid = urllib.parse.quote(user_id, safe="")
+        fs_url = f"https://firestore.googleapis.com/v1/projects/{project}/databases/(default)/documents/chat_history/{safe_uid}/messages"
+        
+        # Extract reply text
+        reply_texts = [p.get("text", "") for p in parts if p.get("kind") == "text" or p.get("text")]
+        reply_summary = "\n".join(filter(None, reply_texts)) or "(Rich UI card)"
+
+        # Save turn
+        now_ts = time.time()
+        turn_data = {
+            "fields": {
+                "user_message": {"stringValue": message[:2000]},
+                "agent_reply": {"stringValue": reply_summary[:3000]},
+                "timestamp": {"doubleValue": now_ts}
+            }
+        }
+        async with httpx.AsyncClient(timeout=5.0) as fs_client:
+            await fs_client.post(fs_url, json=turn_data, headers=fs_headers)
+    except Exception as e:
+        print("Warning: failed to persist chat turn in Firestore:", e)
+
     return JSONResponse({"parts": parts})
+
+
+@app.get("/chat/history")
+async def get_chat_history(user_id: str):
+    """Retrieve stored chat history messages for a specific user from Firestore."""
+    if not user_id:
+        return JSONResponse(status_code=400, content={"ok": False, "error": "user_id required"})
+
+    try:
+        import urllib.parse
+        creds, project = google.auth.default()
+        auth_req = google.auth.transport.requests.Request()
+        creds.refresh(auth_req)
+        fs_headers = {"Authorization": f"Bearer {creds.token}"}
+        safe_uid = urllib.parse.quote(user_id, safe="")
+        fs_url = f"https://firestore.googleapis.com/v1/projects/{project}/databases/(default)/documents/chat_history/{safe_uid}/messages?pageSize=30"
+
+        async with httpx.AsyncClient(timeout=10.0) as fs_client:
+            resp = await fs_client.get(fs_url, headers=fs_headers)
+            if resp.status_code != 200:
+                return JSONResponse({"ok": True, "history": []})
+
+            docs_payload = resp.json().get("documents", [])
+            history = []
+            for d in docs_payload:
+                fields = d.get("fields", {})
+                user_msg = fields.get("user_message", {}).get("stringValue", "")
+                agent_reply = fields.get("agent_reply", {}).get("stringValue", "")
+                ts = fields.get("timestamp", {}).get("doubleValue", 0.0)
+                if user_msg or agent_reply:
+                    history.append({
+                        "user_message": user_msg,
+                        "agent_reply": agent_reply,
+                        "timestamp": ts
+                    })
+            # Sort by timestamp ascending
+            history.sort(key=lambda x: x.get("timestamp", 0.0))
+            return JSONResponse({"ok": True, "history": history})
+    except Exception as e:
+        return JSONResponse(status_code=500, content={"ok": False, "error": str(e)})
 
 
 # Authentication endpoints
