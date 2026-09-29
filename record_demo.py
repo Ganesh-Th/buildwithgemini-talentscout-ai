@@ -29,12 +29,39 @@ with sync_playwright() as p:
     print("Navigating to http://localhost:8080...")
     page.goto("http://localhost:8080", wait_until="networkidle")
     
-    # Wait for initial welcome greeting to complete
-    print("Waiting for welcome greeting...")
-    page.wait_for_selector(".loading-dots", state="detached", timeout=45000)
+    # Authenticate mock user so workspace, dark mode, and history are visible
+    page.evaluate('''() => {
+        currentUser = {
+            email: "alex.scout@example.com",
+            name: "Alex Scout",
+            picture: "",
+            sub: "demo_user_123"
+        };
+        updateUserUI();
+        
+        // Ensure default dark mode
+        document.body.classList.add("dark-mode");
+    }''')
     time.sleep(2)
 
-    # 2. First prompt: Click the "Live AI/ML Jobs" prompt chip
+    # 2. Showcase Dark / Light mode toggle
+    print("Showcasing Theme Toggle...")
+    theme_btn = page.locator("#theme-toggle-btn")
+    theme_btn.hover()
+    time.sleep(1)
+    theme_btn.click() # Switches to Light mode
+    time.sleep(2)
+    theme_btn.click() # Switches back to Dark mode
+    time.sleep(1.5)
+
+    # 3. Showcase Candidate Profile Modal
+    print("Opening Profile Modal...")
+    page.evaluate("openProfileModal()")
+    time.sleep(3)
+    page.evaluate("closeProfileModal()")
+    time.sleep(1)
+
+    # 4. First prompt: Click the "Live AI/ML Jobs" prompt chip
     print("Clicking prompt chip 1: Live AI/ML Jobs...")
     chip1 = page.locator(".prompt-chip").first
     chip1.hover()
@@ -50,7 +77,7 @@ with sync_playwright() as p:
     page.evaluate("document.querySelector('#log').scrollTop = document.querySelector('#log').scrollHeight")
     time.sleep(5)  # Showcase the live jobs card
 
-    # 3. Second prompt: Richer prompt with DB search and Image Generation
+    # 5. Second prompt: Richer prompt with DB search and Image Generation
     print("Typing prompt 2: Tech conferences in SF + banner generation...")
     input_box = page.locator("#input")
     input_box.click()
@@ -71,7 +98,7 @@ with sync_playwright() as p:
         page.evaluate("document.querySelector('#log').scrollTop = document.querySelector('#log').scrollHeight")
         time.sleep(0.5)
         
-    time.sleep(7)  # Showcase the conference card and generated artwork
+    time.sleep(6)  # Showcase the conference card and generated artwork
 
     print("Closing browser context to finalize video...")
     page.close()
