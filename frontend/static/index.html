@@ -229,13 +229,67 @@
   .location-badge {
     display: inline-flex;
     align-items: center;
-    gap: 0.35rem;
-    font-size: 0.78rem;
-    padding: 0.25rem 0.6rem;
+    gap: 0.4rem;
+    font-size: 0.8rem;
+    padding: 0.3rem 0.65rem;
     border-radius: 12px;
     background: #f1f5f9;
-    color: #475569;
-    border: 1px solid #e2e8f0;
+    color: #334155;
+    border: 1px solid #cbd5e1;
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+  .location-badge:hover {
+    background: #e2e8f0;
+    border-color: #94a3b8;
+  }
+  .change-loc-btn {
+    border: none;
+    background: none;
+    color: var(--accent);
+    font-weight: 600;
+    font-size: 0.76rem;
+    cursor: pointer;
+    padding: 0;
+    text-decoration: underline;
+  }
+  /* Simple location edit popup */
+  .location-modal {
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0, 0, 0, 0.45);
+    backdrop-filter: blur(4px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 700;
+  }
+  .location-modal.hidden {
+    display: none;
+  }
+  .location-modal-box {
+    background: #ffffff;
+    border-radius: 14px;
+    padding: 1.5rem;
+    max-width: 380px;
+    width: 90%;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+  }
+  .location-modal-box h3 {
+    margin: 0 0 0.5rem;
+    font-size: 1.1rem;
+    color: var(--text-primary);
+  }
+  .location-modal-box p {
+    margin: 0 0 1rem;
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+  }
+  .location-modal-actions {
+    display: flex;
+    gap: 0.5rem;
+    justify-content: flex-end;
+    margin-top: 1rem;
   }
   form {
     display: flex;
@@ -688,7 +742,10 @@
   <!-- Clickable tailored example prompts & location status -->
   <div class="prompt-chips-row">
     <button type="button" class="prompt-chip" onclick="findJobsNearMe()">
-      <span>📍</span> Jobs Near Me
+      <span>💼</span> Jobs Near Me
+    </button>
+    <button type="button" class="prompt-chip" onclick="findEventsNearMe()">
+      <span>🎟️</span> Events Near Me
     </button>
     <button type="button" class="prompt-chip" onclick="sendPrompt('Find live remote AI/ML engineer jobs')">
       <span>🔍</span> Live AI/ML Jobs
@@ -696,11 +753,9 @@
     <button type="button" class="prompt-chip" onclick="sendPrompt('Calculate resume match for Python, PyTorch, and FastAPI')">
       <span>📊</span> Match My Skills
     </button>
-    <button type="button" class="prompt-chip" onclick="sendPrompt('Search tech conferences and events in San Francisco')">
-      <span>🎟️</span> Tech Events in SF
-    </button>
-    <div id="user-location-tag" class="location-badge" style="display: none;">
+    <div id="user-location-tag" class="location-badge" style="display: none;" onclick="openLocationModal()" title="Click to change your location">
       <span>📍</span> <span id="location-name">Detecting...</span>
+      <span class="change-loc-btn">Change</span>
     </div>
   </div>
   <form id="form">
@@ -713,6 +768,19 @@
     <input id="input" placeholder="Ask TalentScout about jobs, conferences, or resume skills…" autocomplete="off" autofocus>
     <button type="submit">Send</button>
   </form>
+</div>
+
+<!-- Modal to change user location -->
+<div id="location-modal" class="location-modal hidden">
+  <div class="location-modal-box">
+    <h3>📍 Change Your Location</h3>
+    <p>Set your city, country, or region to discover localized tech events and nearby jobs.</p>
+    <input type="text" id="manual-location-input" placeholder="e.g. San Francisco, CA or London, UK or Berlin" style="width: 100%; box-sizing: border-box; margin-bottom: 0.5rem;">
+    <div class="location-modal-actions">
+      <button type="button" onclick="closeLocationModal()" style="background: #e2e8f0; color: #334155;">Cancel</button>
+      <button type="button" onclick="saveCustomLocation()">Save Location</button>
+    </div>
+  </div>
 </div>
 
 <script>
@@ -1042,7 +1110,15 @@ async function initGoogleAuth() {
 let userLocation = null;
 
 async function detectUserLocation() {
-  // Try IP geolocation first (fast, no annoying prompt)
+  // Check if user set a custom preferred location previously
+  const saved = localStorage.getItem("talentscout_custom_location");
+  if (saved) {
+    userLocation = saved;
+    updateLocationUI(userLocation);
+    return;
+  }
+
+  // Try IP geolocation first (fast, default location of user)
   try {
     const res = await fetch("https://ipapi.co/json/");
     if (res.ok) {
@@ -1134,6 +1210,43 @@ function findJobsNearMe() {
     });
   } else {
     sendPrompt(`Search live developer and AI jobs near ${userLocation}`);
+  }
+}
+
+function findEventsNearMe() {
+  if (!userLocation) {
+    detectUserLocation().then(() => {
+      const loc = userLocation || "my region";
+      sendPrompt(`Search upcoming tech conferences, hackathons, and developer events near ${loc}`);
+    });
+  } else {
+    sendPrompt(`Search upcoming tech conferences, hackathons, and developer events near ${userLocation}`);
+  }
+}
+
+function openLocationModal() {
+  const modal = document.getElementById("location-modal");
+  const inputEl = document.getElementById("manual-location-input");
+  if (inputEl) inputEl.value = userLocation || "";
+  if (modal) modal.classList.remove("hidden");
+}
+
+function closeLocationModal() {
+  const modal = document.getElementById("location-modal");
+  if (modal) modal.classList.add("hidden");
+}
+
+function saveCustomLocation() {
+  const inputEl = document.getElementById("manual-location-input");
+  const val = inputEl ? inputEl.value.trim() : "";
+  if (val) {
+    userLocation = val;
+    localStorage.setItem("talentscout_custom_location", val);
+    updateLocationUI(userLocation);
+    closeLocationModal();
+    bubble("agent").textContent = `📍 Location updated to "${userLocation}". Your job searches and tech event recommendations will now be tailored to this location.`;
+  } else {
+    closeLocationModal();
   }
 }
 
