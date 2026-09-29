@@ -248,21 +248,9 @@ async def auth_google(req: Request):
                 }
             })
         except Exception as e:
-            # If verification fails with strict audience, decode without audience check if dev mode
-            return JSONResponse(status_code=401, content={"ok": False, "error": f"Invalid token: {e}"})
+            return JSONResponse(status_code=401, content={"ok": False, "error": f"Invalid Google token: {e}"})
             
-    # Fallback simulation/demo mode for development
-    profile = body.get("profile")
-    if profile and profile.get("email"):
-        return JSONResponse({
-            "ok": True,
-            "user": {
-                "id": profile.get("email"),
-                "email": profile.get("email"),
-                "name": profile.get("name", "Google User"),
-                "picture": profile.get("picture", "")
-            }
-        })
+    return JSONResponse(status_code=400, content={"ok": False, "error": "Google credential token required."})
         
     return JSONResponse(status_code=400, content={"ok": False, "error": "No credential or profile provided"})
 

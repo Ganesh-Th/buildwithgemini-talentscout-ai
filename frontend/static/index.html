@@ -503,17 +503,8 @@
       <span class="status-dot"></span>
       <span>Agent Online</span>
     </div>
-    <!-- Auth section: Google Sign-in button or user profile badge -->
+    <!-- Auth section: user profile badge once logged in with Google -->
     <div id="auth-container">
-      <button id="google-login-btn" class="google-signin-btn" onclick="openAuthModal()">
-        <svg viewBox="0 0 24 24">
-          <path fill="#4285F4" d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.82-2.4 3.68v3.05h3.88c2.27-2.09 3.66-5.17 3.66-9.17z"/>
-          <path fill="#34A853" d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.05c-1.08.72-2.45 1.16-4.05 1.16-3.12 0-5.77-2.1-6.72-4.93H1.25v3.15C3.26 21.36 7.33 24 12 24z"/>
-          <path fill="#FBBC05" d="M5.28 14.27c-.25-.72-.38-1.49-.38-2.27s.13-1.55.38-2.27V6.58H1.25C.45 8.17 0 9.99 0 12s.45 3.83 1.25 5.42l4.03-3.15z"/>
-          <path fill="#EA4335" d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.33 0 3.26 2.64 1.25 6.58l4.03 3.15c.95-2.83 3.6-4.98 6.72-4.98z"/>
-        </svg>
-        <span>Sign in</span>
-      </button>
       <div id="user-profile" class="user-profile-badge" style="display: none;">
         <img id="user-avatar-img" class="user-profile-avatar" style="display: none;" alt="User">
         <div id="user-avatar-fallback" class="user-profile-avatar">U</div>
@@ -531,43 +522,8 @@
     <h2>Sign In Required</h2>
     <p>Welcome to <strong>TalentScout AI</strong>! Please sign in with your Google account to unlock the scout bot, match your resume, and discover live jobs.</p>
     
-    <!-- Google Identity Services Button Container -->
-    <div id="gate-g-id-button" style="display: flex; justify-content: center; margin-bottom: 1.25rem;"></div>
-
-    <!-- Direct Google Sign-in action button -->
-    <button class="google-signin-main-btn" onclick="openAuthModal()">
-      <svg viewBox="0 0 24 24">
-        <path fill="#4285F4" d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.82-2.4 3.68v3.05h3.88c2.27-2.09 3.66-5.17 3.66-9.17z"/>
-        <path fill="#34A853" d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.05c-1.08.72-2.45 1.16-4.05 1.16-3.12 0-5.77-2.1-6.72-4.93H1.25v3.15C3.26 21.36 7.33 24 12 24z"/>
-        <path fill="#FBBC05" d="M5.28 14.27c-.25-.72-.38-1.49-.38-2.27s.13-1.55.38-2.27V6.58H1.25C.45 8.17 0 9.99 0 12s.45 3.83 1.25 5.42l4.03-3.15z"/>
-        <path fill="#EA4335" d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.33 0 3.26 2.64 1.25 6.58l4.03 3.15c.95-2.83 3.6-4.98 6.72-4.98z"/>
-      </svg>
-      <span>Sign in with Google</span>
-    </button>
-  </div>
-</div>
-
-<!-- Google Authentication Modal -->
-<div id="auth-modal" class="auth-modal hidden" onclick="if(event.target===this) closeAuthModal()">
-  <div class="auth-modal-card">
-    <button class="auth-close-btn" onclick="closeAuthModal()">&times;</button>
-    <div class="auth-modal-header">
-      <div class="header-logo" style="margin: 0 auto 0.75rem;">TS</div>
-      <h3>Sign in to TalentScout AI</h3>
-      <p>Sign in with your Google Account to unlock the career scout, access Memory Bank, and run searches.</p>
-    </div>
-    
-    <!-- Container for Google One-Tap / Identity Services button -->
-    <div id="g_id_signin_container" style="display: flex; justify-content: center; margin: 1.25rem 0;"></div>
-
-    <!-- Quick Google sign-in fallback -->
-    <div id="fallback-login-section" style="border-top: 1px solid var(--border); padding-top: 1rem; margin-top: 1rem; text-align: center;">
-      <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.75rem;">Or sign in with your Google email directly:</p>
-      <form onsubmit="submitQuickGoogleAuth(event)" style="display: flex; gap: 0.5rem;">
-        <input id="google-email-input" type="email" placeholder="you@gmail.com" required style="font-size: 0.85rem; padding: 0.5rem 0.75rem;">
-        <button type="submit" style="padding: 0.5rem 0.85rem; font-size: 0.85rem;">Sign In</button>
-      </form>
-    </div>
+    <!-- Official Google Identity Services Sign-In Button Container -->
+    <div id="gate-g-id-button" style="display: flex; justify-content: center; min-height: 44px; margin-top: 1rem;"></div>
   </div>
 </div>
 
@@ -753,7 +709,6 @@ function loadStoredUser() {
 }
 
 function updateUserUI() {
-  const loginBtn = document.getElementById("google-login-btn");
   const userProfile = document.getElementById("user-profile");
   const avatarImg = document.getElementById("user-avatar-img");
   const avatarFallback = document.getElementById("user-avatar-fallback");
@@ -764,7 +719,6 @@ function updateUserUI() {
 
   if (currentUser) {
     if (authGate) authGate.classList.add("hidden");
-    loginBtn.style.display = "none";
     userProfile.style.display = "inline-flex";
     displayName.textContent = currentUser.name || currentUser.email.split("@")[0];
     if (currentUser.picture) {
@@ -780,19 +734,10 @@ function updateUserUI() {
     chips.forEach(c => c.disabled = false);
   } else {
     if (authGate) authGate.classList.remove("hidden");
-    loginBtn.style.display = "inline-flex";
     userProfile.style.display = "none";
     input.disabled = true;
     chips.forEach(c => c.disabled = true);
   }
-}
-
-function openAuthModal() {
-  document.getElementById("auth-modal").classList.remove("hidden");
-}
-
-function closeAuthModal() {
-  document.getElementById("auth-modal").classList.add("hidden");
 }
 
 async function handleCredentialResponse(response) {
@@ -808,44 +753,12 @@ async function handleCredentialResponse(response) {
       currentUser = data.user;
       localStorage.setItem("talentscout_user", JSON.stringify(currentUser));
       updateUserUI();
-      closeAuthModal();
-      bubble("agent").textContent = `Welcome, ${currentUser.name}! Your Google account is authenticated. You can now use the TalentScout AI bot.`;
+      bubble("agent").textContent = `Welcome, ${currentUser.name}! You are authenticated with Google. You can now use TalentScout AI.`;
     } else {
       alert("Google Sign-In failed: " + (data.error || "Unknown error"));
     }
   } catch (e) {
     alert("Authentication error: " + e.message);
-  }
-}
-
-async function submitQuickGoogleAuth(ev) {
-  ev.preventDefault();
-  const emailInput = document.getElementById("google-email-input");
-  const email = emailInput.value.trim();
-  if (!email) return;
-
-  try {
-    const res = await fetch("/auth/google", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        profile: {
-          email: email,
-          name: email.split("@")[0].replace(/[._-]/g, " ").replace(/\b\w/g, l => l.toUpperCase()),
-          picture: ""
-        }
-      })
-    });
-    const data = await res.json();
-    if (data.ok && data.user) {
-      currentUser = data.user;
-      localStorage.setItem("talentscout_user", JSON.stringify(currentUser));
-      updateUserUI();
-      closeAuthModal();
-      bubble("agent").textContent = `Welcome, ${currentUser.name}! Your Google account is authenticated. You can now use TalentScout AI!`;
-    }
-  } catch (e) {
-    alert("Sign-in failed: " + e.message);
   }
 }
 
@@ -870,7 +783,7 @@ async function initGoogleAuth() {
         callback: handleCredentialResponse
       });
 
-      // Render official Google button inside gate and modal
+      // Render official Google button on the auth barrier gate
       const gateBtnContainer = document.getElementById("gate-g-id-button");
       if (gateBtnContainer) {
         google.accounts.id.renderButton(gateBtnContainer, {
@@ -880,17 +793,8 @@ async function initGoogleAuth() {
           text: "signin_with"
         });
       }
-      const btnContainer = document.getElementById("g_id_signin_container");
-      if (btnContainer) {
-        google.accounts.id.renderButton(btnContainer, {
-          theme: "outline",
-          size: "large",
-          width: 280,
-          text: "continue_with"
-        });
-      }
 
-      // Show one-tap prompt if user not logged in
+      // Show Google One-Tap prompt if user not logged in
       if (!currentUser) {
         google.accounts.id.prompt();
       }
@@ -901,11 +805,7 @@ async function initGoogleAuth() {
 }
 
 async function sendMessage(text) {
-  if (!text) return;
-  if (!currentUser) {
-    openAuthModal();
-    return;
-  }
+  if (!text || !currentUser) return;
   bubble("user").textContent = text;
   input.value = "";
   const b = bubble("agent");
@@ -928,20 +828,14 @@ async function sendMessage(text) {
 }
 
 function sendPrompt(text) {
-  if (!currentUser) {
-    openAuthModal();
-    return;
-  }
+  if (!currentUser) return;
   input.value = text;
   form.dispatchEvent(new Event("submit"));
 }
 
 form.addEventListener("submit", (ev) => {
   ev.preventDefault();
-  if (!currentUser) {
-    openAuthModal();
-    return;
-  }
+  if (!currentUser) return;
   const text = input.value.trim();
   sendMessage(text);
 });
