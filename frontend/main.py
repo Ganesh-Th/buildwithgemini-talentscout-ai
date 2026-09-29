@@ -226,9 +226,24 @@ async def chat(req: Request):
         safe_sid = urllib.parse.quote(session_id, safe="")
         fs_url = f"https://firestore.googleapis.com/v1/projects/{project}/databases/(default)/documents/chat_history/{safe_uid}/sessions/{safe_sid}/messages"
         
-        # Extract reply text
+        # Extract reply text (including from any A2UI text components if text parts are empty)
         reply_texts = [p.get("text", "") for p in parts if p.get("kind") == "text" or p.get("text")]
-        reply_summary = "\n".join(filter(None, reply_texts)) or "(Rich UI card)"
+        if not reply_texts:
+            for p in parts:
+                if p.get("kind") == "a2ui" and isinstance(p.get("data"), dict):
+                    su = p["data"].get("surfaceUpdate", {})
+                    for c in su.get("components", []):
+                        comp = c.get("component", {})
+                        if "Text" in comp:
+                            t_val = comp["Text"].get("text", "")
+                            if isinstance(t_val, dict):
+                                t_val = t_val.get("literalString", "")
+                            if t_val:
+                                reply_texts.append(str(t_val))
+        reply_summary = "\n".join(filter(None, reply_texts)) or "Card Details Available"
+
+        # Serialize parts to JSON string for complete UI rehydration
+        parts_json = json.dumps(parts)
 
         # Save turn
         now_ts = time.time()
@@ -236,6 +251,7 @@ async def chat(req: Request):
             "fields": {
                 "user_message": {"stringValue": message[:2000]},
                 "agent_reply": {"stringValue": reply_summary[:3000]},
+                "parts_json": {"stringValue": parts_json[:50000]},
                 "timestamp": {"doubleValue": now_ts}
             }
         }
@@ -331,11 +347,19 @@ async def get_chat_history(user_id: str, session_id: str = "default"):
                 fields = d.get("fields", {})
                 user_msg = fields.get("user_message", {}).get("stringValue", "")
                 agent_reply = fields.get("agent_reply", {}).get("stringValue", "")
+                parts_raw = fields.get("parts_json", {}).get("stringValue", "")
+                parts_obj = None
+                if parts_raw:
+                    try:
+                        parts_obj = json.loads(parts_raw)
+                    except Exception:
+                        parts_obj = None
                 ts = fields.get("timestamp", {}).get("doubleValue", 0.0)
-                if user_msg or agent_reply:
+                if user_msg or agent_reply or parts_obj:
                     history.append({
                         "user_message": user_msg,
                         "agent_reply": agent_reply,
+                        "parts": parts_obj,
                         "timestamp": ts
                     })
             # Sort by timestamp ascending

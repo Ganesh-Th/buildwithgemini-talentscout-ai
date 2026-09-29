@@ -1416,8 +1416,18 @@ async function loadSessionMessages(sessionId) {
         if (turn.user_message) {
           bubble("user").textContent = turn.user_message;
         }
-        if (turn.agent_reply) {
-          bubble("agent").textContent = turn.agent_reply;
+        if (turn.parts && Array.isArray(turn.parts) && turn.parts.length > 0) {
+          const b = bubble("agent");
+          renderReply(b, turn.parts);
+        } else if (turn.agent_reply) {
+          // If previous turn only had placeholder '(Rich UI card)', display a friendly message or render nicely
+          const b = bubble("agent");
+          if (turn.agent_reply === "(Rich UI card)" || turn.agent_reply.includes("(Rich UI card)")) {
+            b.classList.add("rich");
+            b.innerHTML = '<div style="display: flex; align-items: center; gap: 0.5rem; color: #818cf8;"><span class="material-symbols-outlined" style="font-size: 1.2rem;">view_agenda</span><span>Interactive Opportunity Card</span></div><p style="font-size: 0.85rem; color: #94a3b8; margin: 0.25rem 0 0 0;">Check details in conversation summary above.</p>';
+          } else {
+            b.textContent = turn.agent_reply;
+          }
         }
       });
       log.scrollTop = log.scrollHeight;
