@@ -993,12 +993,6 @@
         </div>
       </div>
       <form id="form">
-        <!-- Hidden resume file input -->
-        <input type="file" id="resume-file-input" accept=".pdf,.txt,.md" style="display: none;" onchange="handleResumeUpload(event)">
-        <button type="button" class="upload-resume-btn" onclick="document.getElementById('resume-file-input').click()" title="Upload your PDF or text resume for AI matching">
-          <span>📄</span>
-          <span id="upload-btn-label">Upload Resume</span>
-        </button>
         <input id="input" placeholder="Ask TalentScout about jobs, conferences, or resume skills…" autocomplete="off" autofocus>
         <button type="submit">Send</button>
       </form>
@@ -1270,10 +1264,6 @@ function updateUserUI() {
     if (authGate) authGate.classList.add("hidden");
     userProfile.style.display = "inline-flex";
     displayName.textContent = (userProfileData && userProfileData.name) || currentUser.name || currentUser.email.split("@")[0];
-    if (userProfileData && userProfileData.resume_filename) {
-      const upLabel = document.getElementById("upload-btn-label");
-      if (upLabel) upLabel.textContent = "✓ Resume Added";
-    }
     if (currentUser.picture) {
       avatarImg.src = currentUser.picture;
       avatarImg.style.display = "block";
@@ -1559,51 +1549,6 @@ function updateLocationUI(locText) {
   }
 }
 
-async function handleResumeUpload(ev) {
-  const file = ev.target.files && ev.target.files[0];
-  if (!file) return;
-
-  const uploadBtnLabel = document.getElementById("upload-btn-label");
-  const originalLabel = uploadBtnLabel ? uploadBtnLabel.textContent : "Upload Resume";
-  if (uploadBtnLabel) uploadBtnLabel.textContent = "Analyzing...";
-
-  const reader = new FileReader();
-  reader.onload = async function() {
-    try {
-      const base64Data = reader.result.split(",")[1];
-      const payload = {
-        filename: file.name,
-        mime_type: file.type || "application/pdf",
-        data: base64Data,
-        user_id: currentUser ? currentUser.id : "user"
-      };
-
-      const res = await fetch("/resume/upload", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload)
-      });
-      const data = await res.json();
-
-      if (data.ok && data.summary) {
-        if (uploadBtnLabel) uploadBtnLabel.textContent = "✓ Resume Added";
-        
-        // Notify user in chat and automatically request matching jobs with location
-        const locClause = userLocation ? ` near my location (${userLocation})` : "";
-        const prompt = `Here is my uploaded resume:\n\n${data.summary}\n\nPlease analyze my profile and search live tech jobs matching my skills${locClause}.`;
-        sendMessage(prompt);
-      } else {
-        alert("Resume analysis failed: " + (data.error || "Unknown error"));
-        if (uploadBtnLabel) uploadBtnLabel.textContent = originalLabel;
-      }
-    } catch (e) {
-      alert("Error uploading resume: " + e.message);
-      if (uploadBtnLabel) uploadBtnLabel.textContent = originalLabel;
-    }
-  };
-  reader.readAsDataURL(file);
-}
-
 function findJobsNearMe() {
   if (!userLocation) {
     detectUserLocation().then(() => {
@@ -1756,10 +1701,6 @@ async function handleProfileResumeUpload(ev) {
           filenameEl.textContent = `✓ ${file.name}`;
           statusEl.style.display = "flex";
         }
-        
-        // Also update the main footer upload button label
-        const mainUploadLabel = document.getElementById("upload-btn-label");
-        if (mainUploadLabel) mainUploadLabel.textContent = "✓ Resume Added";
       } else {
         alert("Resume parsing failed: " + (data.error || "Unknown error"));
         if (dropLabel) dropLabel.textContent = "Click or Drag & Drop to Upload Resume";
