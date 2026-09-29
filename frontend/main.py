@@ -249,10 +249,73 @@ async def auth_google(req: Request):
             })
         except Exception as e:
             return JSONResponse(status_code=401, content={"ok": False, "error": f"Invalid Google token: {e}"})
-            
     return JSONResponse(status_code=400, content={"ok": False, "error": "Google credential token required."})
+
+
+# Resume Upload and Parsing using Gemini Multimodal
+@app.post("/resume/upload")
+async def upload_resume(req: Request):
+    """Receive uploaded resume (PDF or text), parse skills, role, and experience using Gemini."""
+    try:
+        body = await req.json()
+        filename = body.get("filename", "resume.pdf")
+        mime_type = body.get("mime_type", "application/pdf")
+        b64_data = body.get("data")
+        user_id = body.get("user_id")
+
+        if not b64_data:
+            return JSONResponse(status_code=400, content={"ok": False, "error": "No file content provided"})
+
+        # Call Gemini 2.5 Flash Multimodal to analyze and extract resume contents
+        creds, project = google.auth.default()
+        auth_req = google.auth.transport.requests.Request()
+        creds.refresh(auth_req)
+
+        headers = {
+            "Authorization": f"Bearer {creds.token}",
+            "Content-Type": "application/json"
+        }
+
+        prompt_text = (
+            "Analyze this resume carefully. Extract:\n"
+            "1. Candidate Name and current/target Role\n"
+            "2. Location / City / Country (if specified)\n"
+            "3. Core Technical Skills and tools\n"
+            "4. Years of experience and recent job titles\n"
+            "5. A concise 2-sentence professional summary for job matching.\n"
+            "Format the response cleanly and concisely."
+        )
+
+        gemini_url = f"https://us-east1-aiplatform.googleapis.com/v1/projects/{project}/locations/us-east1/publishers/google/models/gemini-2.5-flash:generateContent"
         
-    return JSONResponse(status_code=400, content={"ok": False, "error": "No credential or profile provided"})
+        parts_payload = []
+        if mime_type.startswith("text/") or filename.endswith((".txt", ".md")):
+            import base64
+            decoded_text = base64.b64decode(b64_data).decode("utf-8", errors="ignore")
+            parts_payload = [{"text": f"Resume Content:\n{decoded_text}\n\n{prompt_text}"}]
+        else:
+            parts_payload = [
+                {"inlineData": {"mimeType": mime_type, "data": b64_data}},
+                {"text": prompt_text}
+            ]
+
+        payload = {"contents": [{"role": "user", "parts": parts_payload}]}
+
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            resp = await client.post(gemini_url, json=payload, headers=headers)
+            if resp.status_code != 200:
+                return JSONResponse(status_code=500, content={"ok": False, "error": f"Gemini parsing failed: {resp.text[:300]}"})
+
+            gemini_res = resp.json()
+            extracted_analysis = gemini_res["candidates"][0]["content"]["parts"][0]["text"]
+
+            return JSONResponse({
+                "ok": True,
+                "filename": filename,
+                "summary": extracted_analysis
+            })
+    except Exception as e:
+        return JSONResponse(status_code=500, content={"ok": False, "error": f"Upload failed: {str(e)}"})
 
 
 # Serve the chat UI (keep this mount last so /chat and /auth win).

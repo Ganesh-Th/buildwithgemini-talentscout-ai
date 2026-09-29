@@ -206,6 +206,37 @@
     border-color: #c7d2fe;
     transform: translateY(-1px);
   }
+  .upload-resume-btn {
+    padding: 0.75rem 1rem;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: #ffffff;
+    color: var(--text-primary);
+    font-weight: 500;
+    font-size: 0.9rem;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    transition: all 0.15s ease;
+    white-space: nowrap;
+  }
+  .upload-resume-btn:hover {
+    background: var(--accent-light);
+    border-color: #c7d2fe;
+    color: var(--accent-dark);
+  }
+  .location-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-size: 0.78rem;
+    padding: 0.25rem 0.6rem;
+    border-radius: 12px;
+    background: #f1f5f9;
+    color: #475569;
+    border: 1px solid #e2e8f0;
+  }
   form {
     display: flex;
     gap: 0.5rem;
@@ -530,19 +561,31 @@
 <div id="log"></div>
 
 <div class="footer-container">
-  <!-- Clickable tailored example prompts -->
+  <!-- Clickable tailored example prompts & location status -->
   <div class="prompt-chips-row">
+    <button type="button" class="prompt-chip" onclick="findJobsNearMe()">
+      <span>📍</span> Jobs Near Me
+    </button>
     <button type="button" class="prompt-chip" onclick="sendPrompt('Find live remote AI/ML engineer jobs')">
       <span>🔍</span> Live AI/ML Jobs
     </button>
     <button type="button" class="prompt-chip" onclick="sendPrompt('Calculate resume match for Python, PyTorch, and FastAPI')">
-      <span>📊</span> Match My Resume
+      <span>📊</span> Match My Skills
     </button>
     <button type="button" class="prompt-chip" onclick="sendPrompt('Search tech conferences and events in San Francisco')">
-      <span>📍</span> Tech Events in SF
+      <span>🎟️</span> Tech Events in SF
     </button>
+    <div id="user-location-tag" class="location-badge" style="display: none;">
+      <span>📍</span> <span id="location-name">Detecting...</span>
+    </div>
   </div>
   <form id="form">
+    <!-- Hidden resume file input -->
+    <input type="file" id="resume-file-input" accept=".pdf,.txt,.md" style="display: none;" onchange="handleResumeUpload(event)">
+    <button type="button" class="upload-resume-btn" onclick="document.getElementById('resume-file-input').click()" title="Upload your PDF or text resume for AI matching">
+      <span>📄</span>
+      <span id="upload-btn-label">Upload Resume</span>
+    </button>
     <input id="input" placeholder="Ask TalentScout about jobs, conferences, or resume skills…" autocomplete="off" autofocus>
     <button type="submit">Send</button>
   </form>
@@ -804,6 +847,105 @@ async function initGoogleAuth() {
   }
 }
 
+// Geolocation state
+let userLocation = null;
+
+async function detectUserLocation() {
+  // Try IP geolocation first (fast, no annoying prompt)
+  try {
+    const res = await fetch("https://ipapi.co/json/");
+    if (res.ok) {
+      const data = await res.json();
+      if (data && data.city && data.country_name) {
+        userLocation = `${data.city}, ${data.region || ""}, ${data.country_name}`;
+        updateLocationUI(userLocation);
+        return;
+      }
+    }
+  } catch (e) {
+    // fallback to browser navigator
+  }
+
+  // Fallback to browser geolocation
+  if (navigator.geolocation) {
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        userLocation = `Lat ${pos.coords.latitude.toFixed(2)}, Lon ${pos.coords.longitude.toFixed(2)}`;
+        updateLocationUI(userLocation);
+      },
+      (err) => {
+        console.log("Geolocation skipped:", err.message);
+      },
+      { timeout: 5000 }
+    );
+  }
+}
+
+function updateLocationUI(locText) {
+  const locTag = document.getElementById("user-location-tag");
+  const locName = document.getElementById("location-name");
+  if (locTag && locName && locText) {
+    locName.textContent = locText;
+    locTag.style.display = "inline-flex";
+  }
+}
+
+async function handleResumeUpload(ev) {
+  const file = ev.target.files && ev.target.files[0];
+  if (!file) return;
+
+  const uploadBtnLabel = document.getElementById("upload-btn-label");
+  const originalLabel = uploadBtnLabel ? uploadBtnLabel.textContent : "Upload Resume";
+  if (uploadBtnLabel) uploadBtnLabel.textContent = "Analyzing...";
+
+  const reader = new FileReader();
+  reader.onload = async function() {
+    try {
+      const base64Data = reader.result.split(",")[1];
+      const payload = {
+        filename: file.name,
+        mime_type: file.type || "application/pdf",
+        data: base64Data,
+        user_id: currentUser ? currentUser.id : "user"
+      };
+
+      const res = await fetch("/resume/upload", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+      const data = await res.json();
+
+      if (data.ok && data.summary) {
+        if (uploadBtnLabel) uploadBtnLabel.textContent = "✓ Resume Added";
+        
+        // Notify user in chat and automatically request matching jobs with location
+        const locClause = userLocation ? ` near my location (${userLocation})` : "";
+        const prompt = `Here is my uploaded resume:\n\n${data.summary}\n\nPlease analyze my profile and search live tech jobs matching my skills${locClause}.`;
+        sendMessage(prompt);
+      } else {
+        alert("Resume analysis failed: " + (data.error || "Unknown error"));
+        if (uploadBtnLabel) uploadBtnLabel.textContent = originalLabel;
+      }
+    } catch (e) {
+      alert("Error uploading resume: " + e.message);
+      if (uploadBtnLabel) uploadBtnLabel.textContent = originalLabel;
+    }
+  };
+  reader.readAsDataURL(file);
+}
+
+function findJobsNearMe() {
+  if (!userLocation) {
+    detectUserLocation().then(() => {
+      const loc = userLocation || "my region";
+      sendPrompt(`Search live developer and AI jobs near ${loc}`);
+    });
+  } else {
+    sendPrompt(`Search live developer and AI jobs near ${userLocation}`);
+  }
+}
+
 async function sendMessage(text) {
   if (!text || !currentUser) return;
   bubble("user").textContent = text;
@@ -843,6 +985,7 @@ form.addEventListener("submit", (ev) => {
 // Init on DOM ready
 window.addEventListener("DOMContentLoaded", () => {
   initGoogleAuth();
+  detectUserLocation();
   if (currentUser) {
     sendPrompt("hi");
   }

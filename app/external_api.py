@@ -1,7 +1,9 @@
-"""External Public API integration for TalentScout AI.
+"""External Public Job & Opportunity API integrations for TalentScout AI.
 
-Fetches live tech job opportunities from the free public Remotive Jobs API
-(listed in the public-apis directory).
+Fetches live tech job opportunities from verified, legitimate public job platforms:
+1. Remotive Jobs API (free, verified global remote tech job listings)
+2. Jobicy API (free, verified regional/remote tech jobs by geo)
+3. Arbeitnow API (free, verified global and localized tech job board)
 """
 
 import json
@@ -13,42 +15,114 @@ from typing import Any
 
 def fetch_live_tech_jobs(
     query: str = "software engineer",
+    location: str = "",
     limit: int = 5,
 ) -> list[dict[str, Any]]:
-    """Fetch live remote tech and developer job postings from the public Remotive Jobs API.
+    """Fetch live tech job postings from verified public job APIs with location filtering.
 
     Args:
-        query: Tech stack or keywords to search for (e.g. 'python', 'ai', 'full stack', 'react').
+        query: Tech stack, skills, or role to search for (e.g. 'python', 'ai', 'full stack', 'react').
+        location: Candidate location or preferred region (e.g. 'California', 'USA', 'Germany', 'Remote', 'APAC', 'EMEA').
         limit: Maximum number of job postings to return (defaults to 5).
 
     Returns:
         A list of live job postings with title, company, location, tags, salary, and application URL.
     """
-    # Read optional API key from environment variable if configured
-    api_key = os.getenv("REMOTIVE_API_KEY", "")
-    params = {"search": query, "limit": str(limit)}
-    url = f"https://remotive.com/api/remote-jobs?{urllib.parse.urlencode(params)}"
+    results: list[dict[str, Any]] = []
+    location_clean = location.strip().lower()
 
-    headers = {"User-Agent": "TalentScout-AI/1.0"}
-    if api_key:
-        headers["Authorization"] = f"Bearer {api_key}"
-
-    req = urllib.request.Request(url, headers=headers)
+    # 1. Remotive API query
     try:
-        with urllib.request.urlopen(req, timeout=10) as response:
+        search_terms = f"{query} {location}".strip() if location else query
+        params = {"search": search_terms, "limit": str(limit * 2)}
+        url = f"https://remotive.com/api/remote-jobs?{urllib.parse.urlencode(params)}"
+        req = urllib.request.Request(url, headers={"User-Agent": "TalentScout-AI/1.0"})
+        with urllib.request.urlopen(req, timeout=8) as response:
             payload = json.loads(response.read().decode("utf-8"))
             jobs = payload.get("jobs", [])
-            results = []
-            for j in jobs[:limit]:
+            for j in jobs:
+                job_loc = j.get("candidate_required_location", "Remote")
+                if location_clean and location_clean not in job_loc.lower() and "anywhere" not in job_loc.lower() and "remote" not in job_loc.lower():
+                    continue
                 results.append({
                     "title": j.get("title", ""),
                     "company": j.get("company_name", ""),
-                    "location": j.get("candidate_required_location", "Remote"),
+                    "location": job_loc,
                     "tags": j.get("tags", []),
                     "salary": j.get("salary") or "Competitive / Not specified",
                     "url": j.get("url", ""),
-                    "source": "Remotive Public API",
+                    "source": "Remotive API",
                 })
-            return results
+                if len(results) >= limit:
+                    break
     except Exception as e:
-        return [{"error": f"Failed to fetch live tech jobs: {str(e)}"}]
+        pass
+
+    # 2. Jobicy API (if more jobs needed or specific geo requested)
+    if len(results) < limit:
+        try:
+            geo_param = ""
+            if any(k in location_clean for k in ["us", "usa", "united states", "california", "new york", "texas"]):
+                geo_param = "usa"
+            elif any(k in location_clean for k in ["uk", "united kingdom", "london"]):
+                geo_param = "uk"
+            elif any(k in location_clean for k in ["europe", "germany", "france", "emea"]):
+                geo_param = "emea"
+            elif any(k in location_clean for k in ["asia", "india", "singapore", "japan", "apac"]):
+                geo_param = "apac"
+
+            jobicy_params = {"count": str(limit)}
+            if geo_param:
+                jobicy_params["geo"] = geo_param
+            if query:
+                jobicy_params["tag"] = query.split()[0]
+                
+            url = f"https://jobicy.com/api/v2/remote-jobs?{urllib.parse.urlencode(jobicy_params)}"
+            req = urllib.request.Request(url, headers={"User-Agent": "TalentScout-AI/1.0"})
+            with urllib.request.urlopen(req, timeout=8) as response:
+                payload = json.loads(response.read().decode("utf-8"))
+                jobs = payload.get("jobs", [])
+                for j in jobs:
+                    job_loc = j.get("jobGeo", "Remote")
+                    results.append({
+                        "title": j.get("jobTitle", ""),
+                        "company": j.get("companyName", ""),
+                        "location": job_loc,
+                        "tags": [j.get("jobCategory", "Tech")],
+                        "salary": j.get("annualSalaryMin") and f"${j.get('annualSalaryMin'):,} - ${j.get('annualSalaryMax'):,}" or "Competitive",
+                        "url": j.get("url", ""),
+                        "source": "Jobicy API",
+                    })
+                    if len(results) >= limit:
+                        break
+        except Exception as e:
+            pass
+
+    # 3. Arbeitnow API (if still needed)
+    if len(results) < limit:
+        try:
+            url = "https://www.arbeitnow.com/api/job-board-api"
+            req = urllib.request.Request(url, headers={"User-Agent": "TalentScout-AI/1.0"})
+            with urllib.request.urlopen(req, timeout=8) as response:
+                payload = json.loads(response.read().decode("utf-8"))
+                for j in payload.get("data", []):
+                    title = j.get("title", "")
+                    job_loc = j.get("location", "Remote")
+                    # Check keyword match
+                    if query.lower() in title.lower() or any(t.lower() in title.lower() for t in query.split()):
+                        if not location_clean or location_clean in job_loc.lower():
+                            results.append({
+                                "title": title,
+                                "company": j.get("company_name", ""),
+                                "location": job_loc,
+                                "tags": j.get("tags", []),
+                                "salary": "Competitive / Per posting",
+                                "url": j.get("url", ""),
+                                "source": "Arbeitnow API",
+                            })
+                            if len(results) >= limit:
+                                break
+        except Exception as e:
+            pass
+
+    return results[:limit]
