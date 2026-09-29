@@ -732,12 +732,152 @@
     justify-content: space-between;
     font-size: 0.85rem;
   }
-  .chat-session-title {
+  /* Profile Modal & Customization Styles */
+  .profile-modal {
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(15, 23, 42, 0.6);
+    backdrop-filter: blur(5px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 800;
+  }
+  .profile-modal.hidden {
+    display: none;
+  }
+  .profile-card {
+    background: #ffffff;
+    border-radius: 16px;
+    width: 90%;
+    max-width: 540px;
+    max-height: 85vh;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 20px 30px rgba(0, 0, 0, 0.18);
+    border: 1px solid var(--border);
+    animation: modalSlide 0.2s ease-out;
+    overflow: hidden;
+  }
+  .profile-card-header {
+    padding: 1.25rem 1.5rem;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: #f8fafc;
+  }
+  .profile-card-header h3 {
+    margin: 0;
+    font-size: 1.15rem;
+    color: var(--text-primary);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  .profile-card-body {
+    padding: 1.5rem;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+  }
+  .profile-section {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+  .profile-section-label {
+    font-size: 0.85rem;
     font-weight: 600;
     color: var(--text-primary);
     display: flex;
     align-items: center;
     gap: 0.4rem;
+  }
+  .profile-field-desc {
+    font-size: 0.78rem;
+    color: var(--text-secondary);
+    margin-top: -0.25rem;
+  }
+  .profile-input {
+    width: 100%;
+    padding: 0.65rem 0.85rem;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    font-size: 0.9rem;
+    background: #ffffff;
+    color: var(--text-primary);
+    transition: border-color 0.15s ease;
+  }
+  .profile-input:focus {
+    border-color: var(--accent);
+    outline: none;
+  }
+  .resume-dropzone {
+    border: 2px dashed #cbd5e1;
+    border-radius: 10px;
+    padding: 1.25rem;
+    text-align: center;
+    background: #f8fafc;
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+  .resume-dropzone:hover {
+    border-color: var(--accent);
+    background: var(--accent-light);
+  }
+  .resume-dropzone-icon {
+    font-size: 2rem;
+    color: var(--accent);
+    margin-bottom: 0.35rem;
+  }
+  .resume-current-info {
+    padding: 0.75rem;
+    background: #ecfdf5;
+    border: 1px solid #a7f3d0;
+    border-radius: 8px;
+    font-size: 0.82rem;
+    color: #065f46;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .profile-card-footer {
+    padding: 1rem 1.5rem;
+    border-top: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 0.75rem;
+    background: #f8fafc;
+  }
+  .profile-btn-secondary {
+    padding: 0.55rem 1rem;
+    background: #e2e8f0;
+    color: #334155;
+    border-radius: 8px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    border: none;
+    cursor: pointer;
+  }
+  .profile-btn-secondary:hover {
+    background: #cbd5e1;
+  }
+  .profile-btn-primary {
+    padding: 0.55rem 1.2rem;
+    background: var(--accent);
+    color: #ffffff;
+    border-radius: 8px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    border: none;
+    cursor: pointer;
+    transition: background 0.15s ease;
+  }
+  .profile-btn-primary:hover {
+    background: var(--accent-dark);
   }
 </style>
 </head>
@@ -763,7 +903,9 @@
       <div id="user-profile" class="user-profile-badge" style="display: none;">
         <img id="user-avatar-img" class="user-profile-avatar" style="display: none;" alt="User">
         <div id="user-avatar-fallback" class="user-profile-avatar">U</div>
-        <span id="user-display-name" class="user-profile-name">Google User</span>
+        <span id="user-display-name" class="user-profile-name" onclick="openProfileModal()" style="cursor: pointer;" title="Open Profile & Settings">Google User</span>
+        <button type="button" class="profile-nav-btn" onclick="openProfileModal()" title="Customize Profile, Resume & Location" style="background: none; border: none; cursor: pointer; color: var(--accent); font-size: 0.75rem; font-weight: 600; padding: 0 0.25rem;">Profile</button>
+        <span style="color: var(--border);">|</span>
         <button class="signout-btn" onclick="signOut()" title="Sign out">Sign out</button>
       </div>
     </div>
@@ -808,7 +950,10 @@
     </div>
     
     <div class="sidebar-footer">
-      <span>Antigravity Engine</span>
+      <button type="button" onclick="openProfileModal()" style="background: none; border: none; color: #94a3b8; cursor: pointer; display: flex; align-items: center; gap: 0.35rem; font-size: 0.75rem; padding: 0;">
+        <span class="material-symbols-outlined" style="font-size: 16px;">account_circle</span>
+        <span>My Profile</span>
+      </button>
       <span>v2.5 Flash</span>
     </div>
   </aside>
@@ -870,6 +1015,84 @@
     <div class="location-modal-actions">
       <button type="button" onclick="closeLocationModal()" style="background: #e2e8f0; color: #334155;">Cancel</button>
       <button type="button" onclick="saveCustomLocation()">Save Location</button>
+    </div>
+  </div>
+</div>
+
+<!-- Profile & Customization Page Modal -->
+<div id="profile-modal" class="profile-modal hidden">
+  <div class="profile-card">
+    <div class="profile-card-header">
+      <h3>
+        <span class="material-symbols-outlined" style="color: var(--accent);">badge</span>
+        <span>Candidate Profile & Customization</span>
+      </h3>
+      <button type="button" class="sidebar-toggle-btn" onclick="closeProfileModal()" title="Close profile">
+        <span class="material-symbols-outlined" style="font-size: 20px;">close</span>
+      </button>
+    </div>
+
+    <div class="profile-card-body">
+      <!-- User Info & Target Title -->
+      <div class="profile-section">
+        <div class="profile-section-label">
+          <span class="material-symbols-outlined" style="font-size: 18px; color: var(--accent);">person</span>
+          <span>Full Name & Target Role</span>
+        </div>
+        <div style="display: flex; gap: 0.5rem;">
+          <input type="text" id="profile-name-input" class="profile-input" placeholder="Your Name" style="flex: 1;">
+          <input type="text" id="profile-role-input" class="profile-input" placeholder="Target Role (e.g. AI Engineer)" style="flex: 1;">
+        </div>
+      </div>
+
+      <!-- Preferred Job Location -->
+      <div class="profile-section">
+        <div class="profile-section-label">
+          <span class="material-symbols-outlined" style="font-size: 18px; color: #e11d48;">location_on</span>
+          <span>Preferred Location / Market</span>
+        </div>
+        <div class="profile-field-desc">Used by the scout bot to tailor job searches and local tech conferences.</div>
+        <div style="display: flex; gap: 0.5rem;">
+          <input type="text" id="profile-location-input" class="profile-input" placeholder="e.g. San Francisco, CA, London, or Remote">
+          <button type="button" onclick="useCurrentDetectedLocation()" style="background: #f1f5f9; color: #334155; border: 1px solid var(--border); border-radius: 8px; padding: 0 0.85rem; font-size: 0.8rem; cursor: pointer; white-space: nowrap;">📍 Auto-Detect</button>
+        </div>
+      </div>
+
+      <!-- Core Skills & Tech Stack -->
+      <div class="profile-section">
+        <div class="profile-section-label">
+          <span class="material-symbols-outlined" style="font-size: 18px; color: #0284c7;">psychology</span>
+          <span>Key Skills & Tech Stack</span>
+        </div>
+        <div class="profile-field-desc">Enter comma-separated technologies (e.g. Python, PyTorch, React, Cloud Run).</div>
+        <input type="text" id="profile-skills-input" class="profile-input" placeholder="e.g. Python, Vertex AI, FastAPI, TypeScript, Docker">
+      </div>
+
+      <!-- Resume Upload & Management -->
+      <div class="profile-section">
+        <div class="profile-section-label">
+          <span class="material-symbols-outlined" style="font-size: 18px; color: #16a34a;">description</span>
+          <span>Resume Document</span>
+        </div>
+        <div class="profile-field-desc">Upload your latest PDF, text, or markdown resume. Our AI model analyzes your skills automatically.</div>
+        
+        <input type="file" id="profile-resume-file" accept=".pdf,.txt,.md" style="display: none;" onchange="handleProfileResumeUpload(event)">
+        <div class="resume-dropzone" onclick="document.getElementById('profile-resume-file').click()">
+          <div class="resume-dropzone-icon">📄</div>
+          <div style="font-weight: 600; font-size: 0.9rem; color: var(--text-primary);" id="profile-dropzone-label">Click or Drag & Drop to Upload Resume</div>
+          <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.25rem;">Supports PDF, TXT, MD (Max 10MB)</div>
+        </div>
+
+        <div id="profile-resume-status" class="resume-current-info" style="display: none;">
+          <span id="profile-resume-filename">✓ Resume attached</span>
+          <span style="font-size: 0.75rem; color: #059669; font-weight: 600;">Active for Matching</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="profile-card-footer">
+      <button type="button" class="profile-btn-secondary" onclick="closeProfileModal()">Cancel</button>
+      <button type="button" class="profile-btn-primary" onclick="saveUserProfile()">Save Profile</button>
     </div>
   </div>
 </div>
@@ -1046,7 +1269,11 @@ function updateUserUI() {
   if (currentUser) {
     if (authGate) authGate.classList.add("hidden");
     userProfile.style.display = "inline-flex";
-    displayName.textContent = currentUser.name || currentUser.email.split("@")[0];
+    displayName.textContent = (userProfileData && userProfileData.name) || currentUser.name || currentUser.email.split("@")[0];
+    if (userProfileData && userProfileData.resume_filename) {
+      const upLabel = document.getElementById("upload-btn-label");
+      if (upLabel) upLabel.textContent = "✓ Resume Added";
+    }
     if (currentUser.picture) {
       avatarImg.src = currentUser.picture;
       avatarImg.style.display = "block";
@@ -1415,6 +1642,165 @@ function saveCustomLocation() {
   }
 }
 
+/* ----------------------------------------------------------------------------
+ * Profile & Customization Logic
+ * --------------------------------------------------------------------------*/
+let userProfileData = {
+  name: "",
+  target_role: "",
+  skills: "",
+  location: "",
+  resume_filename: "",
+  resume_summary: ""
+};
+
+function loadStoredProfile() {
+  try {
+    const raw = localStorage.getItem("talentscout_profile_data");
+    if (raw) {
+      userProfileData = JSON.parse(raw);
+    }
+  } catch (e) {
+    console.warn("Could not parse profile:", e);
+  }
+}
+
+function openProfileModal() {
+  loadStoredProfile();
+  const modal = document.getElementById("profile-modal");
+  if (!modal) return;
+
+  const nameInput = document.getElementById("profile-name-input");
+  const roleInput = document.getElementById("profile-role-input");
+  const locInput = document.getElementById("profile-location-input");
+  const skillsInput = document.getElementById("profile-skills-input");
+  const resumeStatus = document.getElementById("profile-resume-status");
+  const resumeFilename = document.getElementById("profile-resume-filename");
+
+  if (nameInput) nameInput.value = userProfileData.name || (currentUser ? currentUser.name : "");
+  if (roleInput) roleInput.value = userProfileData.target_role || "";
+  if (locInput) locInput.value = userProfileData.location || userLocation || "";
+  if (skillsInput) skillsInput.value = userProfileData.skills || "";
+
+  if (resumeStatus && resumeFilename) {
+    if (userProfileData.resume_filename) {
+      resumeFilename.textContent = `✓ ${userProfileData.resume_filename}`;
+      resumeStatus.style.display = "flex";
+    } else {
+      resumeStatus.style.display = "none";
+    }
+  }
+
+  modal.classList.remove("hidden");
+}
+
+function closeProfileModal() {
+  const modal = document.getElementById("profile-modal");
+  if (modal) modal.classList.add("hidden");
+}
+
+function useCurrentDetectedLocation() {
+  const locInput = document.getElementById("profile-location-input");
+  if (!userLocation) {
+    detectUserLocation().then(() => {
+      if (locInput && userLocation) locInput.value = userLocation;
+    });
+  } else {
+    if (locInput) locInput.value = userLocation;
+  }
+}
+
+async function handleProfileResumeUpload(ev) {
+  const file = ev.target.files && ev.target.files[0];
+  if (!file) return;
+
+  const dropLabel = document.getElementById("profile-dropzone-label");
+  const statusEl = document.getElementById("profile-resume-status");
+  const filenameEl = document.getElementById("profile-resume-filename");
+
+  if (dropLabel) dropLabel.textContent = "Analyzing resume with Gemini...";
+
+  const reader = new FileReader();
+  reader.onload = async function() {
+    try {
+      const base64Data = reader.result.split(",")[1];
+      const payload = {
+        filename: file.name,
+        mime_type: file.type || "application/pdf",
+        data: base64Data,
+        user_id: currentUser ? currentUser.id : "user"
+      };
+
+      const res = await fetch("/resume/upload", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+      const data = await res.json();
+
+      if (data.ok && data.summary) {
+        userProfileData.resume_filename = file.name;
+        userProfileData.resume_summary = data.summary;
+        if (dropLabel) dropLabel.textContent = `Uploaded: ${file.name}`;
+        if (statusEl && filenameEl) {
+          filenameEl.textContent = `✓ ${file.name}`;
+          statusEl.style.display = "flex";
+        }
+        
+        // Also update the main footer upload button label
+        const mainUploadLabel = document.getElementById("upload-btn-label");
+        if (mainUploadLabel) mainUploadLabel.textContent = "✓ Resume Added";
+      } else {
+        alert("Resume parsing failed: " + (data.error || "Unknown error"));
+        if (dropLabel) dropLabel.textContent = "Click or Drag & Drop to Upload Resume";
+      }
+    } catch (e) {
+      alert("Error: " + e.message);
+      if (dropLabel) dropLabel.textContent = "Click or Drag & Drop to Upload Resume";
+    }
+  };
+  reader.readAsDataURL(file);
+}
+
+function saveUserProfile() {
+  const nameInput = document.getElementById("profile-name-input");
+  const roleInput = document.getElementById("profile-role-input");
+  const locInput = document.getElementById("profile-location-input");
+  const skillsInput = document.getElementById("profile-skills-input");
+
+  if (nameInput) userProfileData.name = nameInput.value.trim();
+  if (roleInput) userProfileData.target_role = roleInput.value.trim();
+  if (locInput) userProfileData.location = locInput.value.trim();
+  if (skillsInput) userProfileData.skills = skillsInput.value.trim();
+
+  // Save to local storage
+  localStorage.setItem("talentscout_profile_data", JSON.stringify(userProfileData));
+
+  // Sync location if set
+  if (userProfileData.location) {
+    userLocation = userProfileData.location;
+    localStorage.setItem("talentscout_custom_location", userLocation);
+    updateLocationUI(userLocation);
+  }
+
+  // Update display name in header if customized
+  if (userProfileData.name) {
+    const dispName = document.getElementById("user-display-name");
+    if (dispName) dispName.textContent = userProfileData.name;
+  }
+
+  closeProfileModal();
+
+  // Announce in agent chat
+  let summaryParts = [];
+  if (userProfileData.target_role) summaryParts.push(`Role: ${userProfileData.target_role}`);
+  if (userProfileData.location) summaryParts.push(`Location: ${userProfileData.location}`);
+  if (userProfileData.skills) summaryParts.push(`Skills: ${userProfileData.skills}`);
+  if (userProfileData.resume_filename) summaryParts.push(`Resume: ${userProfileData.resume_filename}`);
+
+  bubble("agent").textContent = `✨ Profile updated! Saved preferences: ${summaryParts.join(" | ")}. I will tailor all job searches and tech event recommendations according to your profile.`;
+}
+
 async function sendMessage(text) {
   if (!text || !currentUser) return;
   bubble("user").textContent = text;
@@ -1464,6 +1850,7 @@ form.addEventListener("submit", (ev) => {
 
 // Init on DOM ready
 window.addEventListener("DOMContentLoaded", () => {
+  loadStoredProfile();
   initGoogleAuth();
   detectUserLocation();
 });
