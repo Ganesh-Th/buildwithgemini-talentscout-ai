@@ -7,6 +7,8 @@
 <!-- Material Symbols for A2UI Icon components -->
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+<!-- Google Identity Services (One Tap & Sign In Button) -->
+<script src="https://accounts.google.com/gsi/client" async defer></script>
 <style>
   :root {
     --accent: #4f46e5;
@@ -273,11 +275,136 @@
     font-size: 1.4rem;
     line-height: 0.5;
   }
-  .loading-dots span:nth-child(2) { animation-delay: 0.2s; }
-  .loading-dots span:nth-child(3) { animation-delay: 0.4s; }
-  @keyframes blink {
-    0%, 80%, 100% { opacity: 0.2; }
-    40% { opacity: 1; }
+  /* --- Auth styles --- */
+  .header-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.85rem;
+  }
+  .google-signin-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: #ffffff;
+    color: #374151;
+    border: 1px solid #d1d5db;
+    border-radius: 8px;
+    padding: 0.4rem 0.85rem;
+    font-size: 0.82rem;
+    font-weight: 600;
+    cursor: pointer;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+    transition: all 0.15s ease;
+  }
+  .google-signin-btn:hover {
+    background: #f9fafb;
+    border-color: #9ca3af;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.08);
+  }
+  .google-signin-btn svg {
+    width: 16px;
+    height: 16px;
+  }
+  .user-profile-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 0.25rem 0.75rem 0.25rem 0.35rem;
+  }
+  .user-profile-avatar {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    object-fit: cover;
+    background: var(--accent);
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.75rem;
+    font-weight: 700;
+  }
+  .user-profile-name {
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    max-width: 120px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .signout-btn {
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    font-size: 0.75rem;
+    cursor: pointer;
+    padding: 0 0.2rem;
+    text-decoration: underline;
+  }
+  .signout-btn:hover {
+    color: #ef4444;
+  }
+
+  /* Modal for Google sign in */
+  .auth-modal {
+    position: fixed;
+    top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(15, 23, 42, 0.45);
+    backdrop-filter: blur(4px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+  }
+  .auth-modal.hidden {
+    display: none;
+  }
+  .auth-modal-card {
+    background: #ffffff;
+    border-radius: 16px;
+    width: 90%;
+    max-width: 400px;
+    padding: 1.8rem;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+    border: 1px solid var(--border);
+    position: relative;
+    animation: modalSlide 0.2s ease-out;
+  }
+  @keyframes modalSlide {
+    from { opacity: 0; transform: translateY(10px) scale(0.98); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+  }
+  .auth-modal-header {
+    text-align: center;
+    margin-bottom: 1.25rem;
+  }
+  .auth-modal-header h3 {
+    margin: 0.5rem 0 0.25rem;
+    font-size: 1.25rem;
+    color: var(--text-primary);
+  }
+  .auth-modal-header p {
+    margin: 0;
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+  }
+  .auth-close-btn {
+    position: absolute;
+    top: 1rem;
+    right: 1rem;
+    background: none;
+    border: none;
+    font-size: 1.2rem;
+    color: var(--text-muted);
+    cursor: pointer;
+    padding: 0.2rem;
+  }
+  .auth-close-btn:hover {
+    color: var(--text-primary);
   }
 </style>
 </head>
@@ -290,11 +417,55 @@
       <p>AI/ML & Full-Stack Career & Tech Event Scout</p>
     </div>
   </div>
-  <div class="header-badge">
-    <span class="status-dot"></span>
-    <span>Agent Online</span>
+  <div class="header-actions">
+    <div class="header-badge">
+      <span class="status-dot"></span>
+      <span>Agent Online</span>
+    </div>
+    <!-- Auth section: Google Sign-in button or user profile badge -->
+    <div id="auth-container">
+      <button id="google-login-btn" class="google-signin-btn" onclick="openAuthModal()">
+        <svg viewBox="0 0 24 24">
+          <path fill="#4285F4" d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.82-2.4 3.68v3.05h3.88c2.27-2.09 3.66-5.17 3.66-9.17z"/>
+          <path fill="#34A853" d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.05c-1.08.72-2.45 1.16-4.05 1.16-3.12 0-5.77-2.1-6.72-4.93H1.25v3.15C3.26 21.36 7.33 24 12 24z"/>
+          <path fill="#FBBC05" d="M5.28 14.27c-.25-.72-.38-1.49-.38-2.27s.13-1.55.38-2.27V6.58H1.25C.45 8.17 0 9.99 0 12s.45 3.83 1.25 5.42l4.03-3.15z"/>
+          <path fill="#EA4335" d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.33 0 3.26 2.64 1.25 6.58l4.03 3.15c.95-2.83 3.6-4.98 6.72-4.98z"/>
+        </svg>
+        <span>Sign in</span>
+      </button>
+      <div id="user-profile" class="user-profile-badge" style="display: none;">
+        <img id="user-avatar-img" class="user-profile-avatar" style="display: none;" alt="User">
+        <div id="user-avatar-fallback" class="user-profile-avatar">U</div>
+        <span id="user-display-name" class="user-profile-name">Google User</span>
+        <button class="signout-btn" onclick="signOut()" title="Sign out">Sign out</button>
+      </div>
+    </div>
   </div>
 </header>
+
+<!-- Google Authentication Modal -->
+<div id="auth-modal" class="auth-modal hidden" onclick="if(event.target===this) closeAuthModal()">
+  <div class="auth-modal-card">
+    <button class="auth-close-btn" onclick="closeAuthModal()">&times;</button>
+    <div class="auth-modal-header">
+      <div class="header-logo" style="margin: 0 auto 0.75rem;">TS</div>
+      <h3>Sign in to TalentScout AI</h3>
+      <p>Connect your Google Account to personalize career matches, memory sync, and recommendations.</p>
+    </div>
+    
+    <!-- Container for Google One-Tap / Identity Services button -->
+    <div id="g_id_signin_container" style="display: flex; justify-content: center; margin: 1.25rem 0;"></div>
+
+    <!-- Quick Google sign-in fallback -->
+    <div id="fallback-login-section" style="border-top: 1px solid var(--border); padding-top: 1rem; margin-top: 1rem; text-align: center;">
+      <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.75rem;">Or sign in with your Google email directly:</p>
+      <form onsubmit="submitQuickGoogleAuth(event)" style="display: flex; gap: 0.5rem;">
+        <input id="google-email-input" type="email" placeholder="you@gmail.com" required style="font-size: 0.85rem; padding: 0.5rem 0.75rem;">
+        <button type="submit" style="padding: 0.5rem 0.85rem; font-size: 0.85rem;">Sign In</button>
+      </form>
+    </div>
+  </div>
+</div>
 
 <div id="log"></div>
 
@@ -462,6 +633,151 @@ function renderReply(b, parts) {
   log.scrollTop = log.scrollHeight;
 }
 
+// Current authenticated user state
+let currentUser = null;
+
+function loadStoredUser() {
+  try {
+    const raw = localStorage.getItem("talentscout_user");
+    if (raw) {
+      currentUser = JSON.parse(raw);
+      updateUserUI();
+    }
+  } catch (e) {
+    console.error("Failed to load user from localStorage", e);
+  }
+}
+
+function updateUserUI() {
+  const loginBtn = document.getElementById("google-login-btn");
+  const userProfile = document.getElementById("user-profile");
+  const avatarImg = document.getElementById("user-avatar-img");
+  const avatarFallback = document.getElementById("user-avatar-fallback");
+  const displayName = document.getElementById("user-display-name");
+
+  if (currentUser) {
+    loginBtn.style.display = "none";
+    userProfile.style.display = "inline-flex";
+    displayName.textContent = currentUser.name || currentUser.email.split("@")[0];
+    if (currentUser.picture) {
+      avatarImg.src = currentUser.picture;
+      avatarImg.style.display = "block";
+      avatarFallback.style.display = "none";
+    } else {
+      avatarImg.style.display = "none";
+      avatarFallback.style.display = "flex";
+      avatarFallback.textContent = (currentUser.name || currentUser.email || "U")[0].toUpperCase();
+    }
+  } else {
+    loginBtn.style.display = "inline-flex";
+    userProfile.style.display = "none";
+  }
+}
+
+function openAuthModal() {
+  document.getElementById("auth-modal").classList.remove("hidden");
+}
+
+function closeAuthModal() {
+  document.getElementById("auth-modal").classList.add("hidden");
+}
+
+async function handleCredentialResponse(response) {
+  if (!response || !response.credential) return;
+  try {
+    const res = await fetch("/auth/google", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ credential: response.credential })
+    });
+    const data = await res.json();
+    if (data.ok && data.user) {
+      currentUser = data.user;
+      localStorage.setItem("talentscout_user", JSON.stringify(currentUser));
+      updateUserUI();
+      closeAuthModal();
+      bubble("agent").textContent = `Welcome, ${currentUser.name}! Your Google account is connected. Personalized memory and matches are active.`;
+    } else {
+      alert("Google Sign-In failed: " + (data.error || "Unknown error"));
+    }
+  } catch (e) {
+    alert("Authentication error: " + e.message);
+  }
+}
+
+async function submitQuickGoogleAuth(ev) {
+  ev.preventDefault();
+  const emailInput = document.getElementById("google-email-input");
+  const email = emailInput.value.trim();
+  if (!email) return;
+
+  try {
+    const res = await fetch("/auth/google", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        profile: {
+          email: email,
+          name: email.split("@")[0].replace(/[._-]/g, " ").replace(/\b\w/g, l => l.toUpperCase()),
+          picture: ""
+        }
+      })
+    });
+    const data = await res.json();
+    if (data.ok && data.user) {
+      currentUser = data.user;
+      localStorage.setItem("talentscout_user", JSON.stringify(currentUser));
+      updateUserUI();
+      closeAuthModal();
+      bubble("agent").textContent = `Welcome, ${currentUser.name}! You are signed in as ${currentUser.email}.`;
+    }
+  } catch (e) {
+    alert("Sign-in failed: " + e.message);
+  }
+}
+
+function signOut() {
+  currentUser = null;
+  localStorage.removeItem("talentscout_user");
+  updateUserUI();
+  bubble("agent").textContent = "You have signed out. Conversations will use a guest session.";
+}
+
+// Initialize Google Identity Services
+async function initGoogleAuth() {
+  loadStoredUser();
+  try {
+    const res = await fetch("/auth/config");
+    const config = await res.json();
+    const clientId = config.google_client_id;
+
+    if (clientId && window.google && window.google.accounts) {
+      google.accounts.id.initialize({
+        client_id: clientId,
+        callback: handleCredentialResponse
+      });
+
+      // Render official Google button inside modal
+      const btnContainer = document.getElementById("g_id_signin_container");
+      if (btnContainer) {
+        google.accounts.id.renderButton(btnContainer, {
+          theme: "outline",
+          size: "large",
+          width: 280,
+          text: "continue_with"
+        });
+      }
+
+      // Optionally show one-tap if user not already logged in
+      if (!currentUser) {
+        google.accounts.id.prompt();
+      }
+    }
+  } catch (e) {
+    console.warn("Google Auth config init check:", e);
+  }
+}
+
 async function sendMessage(text) {
   if (!text) return;
   bubble("user").textContent = text;
@@ -469,10 +785,14 @@ async function sendMessage(text) {
   const b = bubble("agent");
   b.innerHTML = '<div class="loading-dots"><span>•</span><span>•</span><span>•</span></div>';
   try {
+    const payload = { message: text };
+    if (currentUser && currentUser.id) {
+      payload.user_id = currentUser.id;
+    }
     const res = await fetch("/chat", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ message: text })
+      body: JSON.stringify(payload)
     });
     const raw = await res.text();
     let data;
@@ -495,8 +815,9 @@ form.addEventListener("submit", (ev) => {
   sendMessage(text);
 });
 
-// Show initial welcome greeting
+// Show initial welcome greeting & init auth
 window.addEventListener("DOMContentLoaded", () => {
+  initGoogleAuth();
   sendPrompt("hi");
 });
 </script>

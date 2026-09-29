@@ -200,7 +200,60 @@ async def chat(req: Request):
     return JSONResponse({"parts": parts})
 
 
-# Serve the chat UI (keep this mount last so /chat wins).
+# Authentication endpoints
+@app.get("/auth/config")
+async def auth_config():
+    """Return Google Client ID if configured, enabling the official Google Identity Services button."""
+    return JSONResponse({
+        "google_client_id": os.environ.get("GOOGLE_CLIENT_ID", "")
+    })
+
+
+@app.post("/auth/google")
+async def auth_google(req: Request):
+    """Verify Google ID token or fallback profile."""
+    body = await req.json()
+    credential = body.get("credential")
+    client_id = os.environ.get("GOOGLE_CLIENT_ID")
+    
+    if credential:
+        try:
+            from google.oauth2 import id_token
+            from google.auth.transport import requests as auth_requests
+            id_info = id_token.verify_oauth2_token(
+                credential, auth_requests.Request(), audience=client_id if client_id else None
+            )
+            user_id = id_info.get("email") or id_info.get("sub")
+            return JSONResponse({
+                "ok": True,
+                "user": {
+                    "id": user_id,
+                    "email": id_info.get("email", ""),
+                    "name": id_info.get("name", "Google User"),
+                    "picture": id_info.get("picture", "")
+                }
+            })
+        except Exception as e:
+            # If verification fails with strict audience, decode without audience check if dev mode
+            return JSONResponse(status_code=401, content={"ok": False, "error": f"Invalid token: {e}"})
+            
+    # Fallback simulation/demo mode for development
+    profile = body.get("profile")
+    if profile and profile.get("email"):
+        return JSONResponse({
+            "ok": True,
+            "user": {
+                "id": profile.get("email"),
+                "email": profile.get("email"),
+                "name": profile.get("name", "Google User"),
+                "picture": profile.get("picture", "")
+            }
+        })
+        
+    return JSONResponse(status_code=400, content={"ok": False, "error": "No credential or profile provided"})
+
+
+# Serve the chat UI (keep this mount last so /chat and /auth win).
 app.mount("/", StaticFiles(directory="static", html=True), name="static")
 
 
