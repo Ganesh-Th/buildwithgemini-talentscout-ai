@@ -47,6 +47,99 @@ Every capability listed below is implemented in this repository and wired to liv
 | **Cross-Session Long-Term Memory** | `PreloadMemoryTool`, `generate_memories_callback` (`app/agent.py`) | Persists candidate preferences, technical background, career goals, and dietary restrictions/allergies across conversations using Vertex AI Memory Bank. |
 | **Rich A2UI Card Rendering** | `A2uiSchemaManager`, `a2ui_callback` (`app/a2ui_utils.py`) | Emits structured A2UI v0.8 Basic Catalog components (Cards, Columns, Rows, Text, Images) for clean visual presentation in chat interfaces. |
 
+## Architecture Diagram
+
+The system follows an asynchronous, cloud-native decoupled architecture connecting the Google Antigravity-styled web client to the Vertex AI Agent Runtime via A2A (Agent-to-Agent) protocol:
+
+```mermaid
+graph TB
+    subgraph Client["Client Tier (Web Browser)"]
+        UI["Antigravity Workspace UI<br/>(Dark/Light Mode, Sidebar History, A2UI Cards)"]
+        GIS["Google Identity Services<br/>(OAuth 2.0 Web Client)"]
+        Geo["HTML5 / IP Geolocation<br/>(Location Detection & Override)"]
+    end
+
+    subgraph Frontend["Cloud Run Frontend Tier (FastAPI Proxy)"]
+        Proxy["FastAPI Server (main.py)"]
+        AuthHandler["/auth/google (Token Verification)"]
+        ResumeParser["/resume/upload (Gemini 2.5 Flash Multimodal)"]
+        SessionMgr["/chat/sessions & /chat/history (Thread Persistence)"]
+        A2AClient["ADK A2A Client (Agent-to-Agent Protocol)"]
+    end
+
+    subgraph AgentRuntime["Google Cloud Vertex AI Agent Runtime"]
+        RootAgent["TalentScout Root Agent (gemini-3.6-flash)"]
+        A2UIMod["A2UI Callback (Rich Component Emission)"]
+        MemTool["PreloadMemoryTool & Memories Callback"]
+        CodeBox["Agent Engine Sandbox Code Executor"]
+    end
+
+    subgraph DataServices["Google Cloud Platform & External Services"]
+        Firestore[("Cloud Firestore<br/>(Jobs, Events & Threads)")]
+        GCS[("Cloud Storage (GCS)<br/>(Banners & Video Media)")]
+        MemoryBank[("Vertex AI Memory Bank<br/>(Cross-Session Long-Term Context)")]
+        MapsAPI["Google Maps Platform<br/>(Geocoding & Places API)"]
+        RemotiveAPI["Remotive Live Jobs API<br/>(External Web Engine)"]
+        Imagen["Gemini 3.1 Flash Lite Image<br/>(Opportunity Banners)"]
+        OmniVideo["Gemini Omni Flash Preview<br/>(Teaser Video Generation)"]
+    end
+
+    %% Client Interactions
+    UI -->|"1. User Sign-In"| GIS
+    GIS -->|"2. ID Token"| UI
+    UI -->|"3. Send ID Token"| AuthHandler
+    UI -->|"4. Detect Location"| Geo
+    UI -->|"5. Upload Resume (PDF/TXT)"| ResumeParser
+    UI -->|"6. Chat Query + Session ID"| Proxy
+
+    %% Frontend Proxy Interactions
+    AuthHandler -->|"Verify & Extract Profile"| Proxy
+    ResumeParser -->|"Extract Skills & Role"| Proxy
+    Proxy --> SessionMgr
+    SessionMgr <-->|"Read / Write Chat History"| Firestore
+    Proxy -->|"7. A2A Protocol Request"| A2AClient
+    A2AClient <-->|"A2A Bidirectional Stream"| RootAgent
+
+    %% Agent Engine Interactions
+    RootAgent --> A2UIMod
+    RootAgent <--> MemTool
+    RootAgent <--> CodeBox
+
+    %% Data & External Integrations
+    MemTool <-->|"Store & Retrieve Facts"| MemoryBank
+    RootAgent <-->|"Catalog Queries & Matching"| Firestore
+    RootAgent <-->|"Live Web Job Fetch"| RemotiveAPI
+    RootAgent <-->|"Venue & Coordinates Lookup"| MapsAPI
+    RootAgent -->|"Synthesize Graphics"| Imagen
+    RootAgent -->|"Render Video Teasers"| OmniVideo
+    Imagen -->|"Save Image Bytes"| GCS
+    OmniVideo -->|"Save Video MP4"| GCS
+    GCS -.->|"Public Media URLs"| UI
+```
+
+---
+
+## Tech Stack Used
+
+| Layer / Domain | Technology | Purpose & Implementation |
+|---|---|---|
+| **Core AI Reasoning Model** | **Google Gemini 3.6 Flash** (`gemini-3.6-flash`) | Core agent reasoning, chain-of-thought orchestration, function calling, and structured card planning. |
+| **Multimodal Vision Model** | **Google Gemini 2.5 Flash** (`gemini-2.5-flash`) | Deep multimodal document processing and PDF resume skills extraction. |
+| **Generative Media Models** | **Gemini 3.1 Flash Lite Image** & **Gemini Omni Flash Preview** | Dynamic synthesis of company opportunity banners and video teaser generation. |
+| **Agent Framework** | **Google Agent Development Kit (ADK)** | Declarative agent definition, lifecycle hooks, tool registration, and A2A communication. |
+| **Agent Hosting Platform** | **Vertex AI Agent Runtime (Reasoning Engine)** | Managed serverless agent container infrastructure hosting the live reasoning agent. |
+| **Frontend Web Framework** | **FastAPI + Uvicorn** | High-performance asynchronous API gateway, session routing, and A2A reverse proxy. |
+| **Frontend UI / UX** | **Vanilla HTML5, Modern CSS, ES6+ JavaScript** | Responsive, zero-dependency Antigravity-styled workspace with dark/light themes, collapsible sidebar, and profile customization modal. |
+| **Rich UI Catalog** | **A2UI Protocol (v0.8 Basic Catalog)** | Native mini-renderer for Cards, Rows, Columns, Material Symbols icons, and responsive layouts. |
+| **Authentication** | **Google Identity Services (OAuth 2.0 / JWT)** | Strict Google account authentication (`google-auth`) verifying candidate identity. |
+| **Database & Persistence** | **Google Cloud Firestore (Datastore Mode)** | Scalable NoSQL store for job postings, tech events, candidate sessions, and full conversation logs. |
+| **Memory System** | **Vertex AI Memory Bank** | Cross-session associative memory keeping track of candidate goals, preferences, and interview history. |
+| **Code Execution** | **Vertex AI Agent Engine Sandbox** | Isolated secure sandbox environment for mathematical analysis, salary modeling, and data manipulation. |
+| **Object Storage** | **Google Cloud Storage (GCS)** | Public media hosting for AI-generated banners, employer assets, and teaser videos. |
+| **Geolocation & Mapping** | **Google Maps Geocoding & Places APIs** | Precise coordinate resolution and nearby conference venue, hotel, and transit discovery. |
+| **External Live Data** | **Remotive API** | Live programmatic indexing of global remote software engineering and AI positions. |
+| **Container & CI/CD** | **Google Cloud Run & Cloud Build** | Fully managed serverless container deployment with automatic SSL, scaling, and zero idle overhead. |
+
 ---
 
 ## Google Cloud Architecture & Services
@@ -180,3 +273,9 @@ gcloud run deploy talentscout-frontend \
 ```
 
 Ensure the Cloud Run service account has `roles/aiplatform.user` permissions so it can query the deployed agent over A2A.
+
+---
+
+## License
+
+This project is licensed under the **Apache License 2.0**. See the [LICENSE](LICENSE) file for details.
