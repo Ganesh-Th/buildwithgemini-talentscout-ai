@@ -151,7 +151,16 @@ def _extract_parts(parts: list) -> list[dict]:
 async def chat(req: Request):
     body = await req.json()
     message = body.get("message", "")
-    user_id = body.get("user_id") or "web-user"
+    user_id = body.get("user_id")
+    
+    # Enforce sign in: only authenticated users can use the AI bot
+    if not user_id:
+        return JSONResponse(
+            status_code=401,
+            content={
+                "parts": [{"kind": "text", "text": "Authentication required. Please sign in with Google to chat with TalentScout AI."}]
+            }
+        )
     parts: list[dict] = []
 
     async with httpx.AsyncClient(headers=_auth_headers(), timeout=120) as client:
