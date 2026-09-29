@@ -210,11 +210,16 @@ async def chat(req: Request):
 
 
 # Authentication endpoints
+GOOGLE_OAUTH_CLIENT_ID = os.environ.get(
+    "GOOGLE_CLIENT_ID",
+    "284031418526-ph8a2s8ccokq3jjh9kduq71bl9k47kne.apps.googleusercontent.com"
+)
+
 @app.get("/auth/config")
 async def auth_config():
-    """Return Google Client ID if configured, enabling the official Google Identity Services button."""
+    """Return Google Client ID enabling the official Google Identity Services button."""
     return JSONResponse({
-        "google_client_id": os.environ.get("GOOGLE_CLIENT_ID", "")
+        "google_client_id": GOOGLE_OAUTH_CLIENT_ID
     })
 
 
@@ -223,7 +228,7 @@ async def auth_google(req: Request):
     """Verify Google ID token or fallback profile."""
     body = await req.json()
     credential = body.get("credential")
-    client_id = os.environ.get("GOOGLE_CLIENT_ID")
+    client_id = GOOGLE_OAUTH_CLIENT_ID
     
     if credential:
         try:
